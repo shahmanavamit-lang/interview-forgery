@@ -72,6 +72,18 @@ class LiveInput(Input):
         return self
 
 
+class AnswerRecord(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True, allow_inf_nan=False)
+    question: Annotated[str, Field(max_length=5000)]
+    transcript: Annotated[str, Field(max_length=30_000)]
+    speech_confidence: Annotated[float | None, Field(ge=0, le=1)] = None
+
+
+class SummaryInput(Input):
+    resume_skills: Annotated[list[Annotated[str, Field(min_length=1, max_length=100)]], Field(min_length=1, max_length=30)]
+    answers: Annotated[list[AnswerRecord], Field(max_length=50)] = Field(default_factory=list)
+
+
 def load_speech_model():
     global _model
     with _model_lock:
@@ -243,6 +255,174 @@ def analyze_capture(samples, interrupted):
     return result
 
 
+def judge_candidate(payload: SummaryInput, sanitize, vocabulary):
+    raw_skills = [words(sanitize(s)) for s in payload.resume_skills]
+    skills = sorted({s for s in raw_skills if s in vocabulary})
+
+    answer_evaluations = []
+    skill_hits = {skill: set() for skill in skills}
+    skill_targeted_counts = {skill: 0 for skill in skills}
+
+    for idx, ans in enumerate(payload.answers, start=1):
+        q_clean = sanitize(ans.question)
+        t_clean = sanitize(ans.transcript)
+        q_words = words(q_clean)
+        t_words = words(t_clean)
+        word_count = len(t_words.split())
+
+        targeted = [s for s in skills if any(contains(q_words, a) for a in ALIASES.get(s, [s]))]
+        if not targeted:
+            for s in skills:
+                unique = [term for term in vocabulary.get(s, ()) if sum(term in vals for vals in vocabulary.values()) == 1]
+                if any(contains(q_words, term) for term in unique):
+                    targeted.append(s)
+
+        eval_skills = targeted if targeted else skills
+        for s in targeted:
+            skill_targeted_counts[s] += 1
+
+        matched_terms_for_answer = {}
+        for s in eval_skills:
+            terms = [term for term in vocabulary.get(s, ()) if contains(t_words, term)]
+            if terms:
+                matched_terms_for_answer[s] = terms
+                skill_hits[s].update(terms)
+
+        all_matched = [term for terms in matched_terms_for_answer.values() for term in terms]
+
+        # 1. Technical Vocabulary (up to 50 points)
+        vocab_score = min(50, len(all_matched) * 25)
+
+        # 2. Answer Depth & Substance (up to 35 points)
+        if word_count >= 30:
+            depth_score = 35
+        elif word_count >= 20:
+            depth_score = 25
+        elif word_count >= 12:
+            depth_score = 15
+        elif word_count > 0:
+            depth_score = 5
+        else:
+            depth_score = 0
+
+        # 3. Speech Clarity & Confidence (up to 15 points)
+        conf = ans.speech_confidence
+        if conf is not None:
+            if conf >= 0.80:
+                clarity_score = 15
+            elif conf >= 0.65:
+                clarity_score = 10
+            elif conf >= 0.50:
+                clarity_score = 5
+            else:
+                clarity_score = 2
+        else:
+            clarity_score = 10
+
+        answer_points = min(100, vocab_score + depth_score + clarity_score)
+
+        if answer_points >= 80:
+            rating = "Strong Answer"
+            feedback = f"Strong technical response with relevant terminology ({', '.join(all_matched) if all_matched else 'good depth'})."
+        elif answer_points >= 60:
+            rating = "Good Answer"
+            feedback = "Solid answer addressing the core concepts effectively."
+        elif answer_points >= 40:
+            rating = "Basic Answer"
+            feedback = "Basic response; could benefit from more specific technical details and examples."
+        else:
+            rating = "Needs Improvement"
+            feedback = "Brief or limited response; missing key technical terms for the tested domain."
+
+        answer_evaluations.append({
+            "index": idx,
+            "question": q_clean,
+            "transcript": t_clean,
+            "points": answer_points,
+            "rating": rating,
+            "matched_terms": all_matched,
+            "feedback": feedback
+        })
+
+    skill_breakdowns = []
+    for s in skills:
+        matched = sorted(skill_hits[s])
+        targeted_count = skill_targeted_counts[s]
+        if targeted_count == 0 and not matched:
+            skill_breakdowns.append({
+                "skill": s,
+                "score": None,
+                "status": "NOT_EVALUATED",
+                "matched_terms": [],
+                "feedback": "Skill was not covered in the interview questions."
+            })
+        else:
+            term_score = min(60, len(matched) * 30)
+            coverage_score = 40 if targeted_count > 0 and len(matched) >= 1 else 20
+            skill_points = min(100, term_score + coverage_score)
+            status = "STRONG" if skill_points >= 75 else "COMPETENT" if skill_points >= 50 else "NEEDS_IMPROVEMENT"
+            feedback = f"Demonstrated terms: {', '.join(matched)}" if matched else "Limited domain terminology demonstrated."
+            skill_breakdowns.append({
+                "skill": s,
+                "score": skill_points,
+                "status": status,
+                "matched_terms": matched,
+                "feedback": feedback
+            })
+
+    if answer_evaluations:
+        total_points = round(sum(a["points"] for a in answer_evaluations) / len(answer_evaluations))
+    else:
+        total_points = 0
+
+    if total_points >= 80:
+        verdict = "Strong Technical Performance"
+        recommendation = "High Recommendation: Candidate exhibited strong technical vocabulary and thorough explanations."
+    elif total_points >= 65:
+        verdict = "Qualified Technical Performance"
+        recommendation = "Recommendation: Candidate demonstrated good baseline technical competence across tested topics."
+    elif total_points >= 50:
+        verdict = "Moderate Technical Performance"
+        recommendation = "Conditional Recommendation: Candidate grasped basic concepts but would benefit from further deep-dive validation."
+    elif total_points > 0:
+        verdict = "Needs Improvement"
+        recommendation = "Follow-up Required: Answers showed limited technical depth and terminology."
+    else:
+        verdict = "No Answers Evaluated"
+        recommendation = "No interview answers were provided for assessment."
+
+    strengths = []
+    improvements = []
+    for sb in skill_breakdowns:
+        if sb["status"] == "STRONG":
+            strengths.append(f"Demonstrated command of {sb['skill']} concepts ({', '.join(sb['matched_terms'])}).")
+        elif sb["status"] == "NEEDS_IMPROVEMENT":
+            improvements.append(f"Follow up on {sb['skill']} implementation and architecture.")
+        elif sb["status"] == "NOT_EVALUATED":
+            improvements.append(f"Assess {sb['skill']} in future interview questions.")
+
+    if not strengths:
+        strengths.append("Engaged with interview questions and provided structured responses.")
+    if not improvements:
+        improvements.append("Candidate answered tested skill areas thoroughly.")
+
+    summary_text = (
+        f"Candidate completed {len(answer_evaluations)} question-and-answer turn(s), achieving an overall score of {total_points}/100 points. "
+        f"{verdict}. {recommendation}"
+    )
+
+    return {
+        "total_points": total_points,
+        "verdict": verdict,
+        "recommendation": recommendation,
+        "summary": summary_text,
+        "strengths": strengths,
+        "areas_for_improvement": improvements,
+        "skill_breakdowns": skill_breakdowns,
+        "answer_evaluations": answer_evaluations
+    }
+
+
 def register_live(app, sanitize, vocabulary):
     slots = asyncio.Semaphore(4)
 
@@ -251,6 +431,10 @@ def register_live(app, sanitize, vocabulary):
         return {'speech': 'LOCAL_VOSK' if MODEL_PATH.is_dir() else 'MODEL_MISSING',
                 'video': 'LOCAL_FACE_LANDMARKS', 'synthetic_only': True,
                 'voice_clone_detection': 'UNAVAILABLE', 'deepfake_detection': 'UNAVAILABLE'}
+
+    @app.post('/interview/summary')
+    def interview_summary(payload: SummaryInput):
+        return judge_candidate(payload, sanitize, vocabulary)
 
     @app.post('/resume')
     def resume(payload: ResumeInput):

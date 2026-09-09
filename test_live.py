@@ -95,6 +95,54 @@ class LiveWorkflowTests(unittest.TestCase):
             self.assertEqual(asyncio.run(api_request(request(**changes), '/analyze/live'))[0], 422)
         self.assertEqual(analyze_capture([], False)['status'], 'INSUFFICIENT_CAPTURE')
 
+    def test_interview_summary_and_candidate_judgment(self):
+        payload = {
+            'synthetic_profile': True,
+            'resume_skills': ['python', 'sql'],
+            'answers': [
+                {
+                    'question': 'How do you use Python generators and iterators? Contact 9876543210',
+                    'transcript': 'In Python a generator yields values with an iterator and handles exceptions cleanly. My PAN is ABCDE1234F',
+                    'speech_confidence': 0.92
+                },
+                {
+                    'question': 'Explain SQL indexing and query optimization.',
+                    'transcript': 'In SQL we create an index on frequently queried columns and inspect the query plan to optimize joins.',
+                    'speech_confidence': 0.88
+                }
+            ]
+        }
+        status, result = asyncio.run(api_request(payload, '/interview/summary'))
+        self.assertEqual(status, 200)
+        self.assertGreaterEqual(result['total_points'], 80)
+        self.assertEqual(result['verdict'], 'Strong Technical Performance')
+        self.assertIn('High Recommendation', result['recommendation'])
+        self.assertEqual(len(result['answer_evaluations']), 2)
+        self.assertNotIn('9876543210', json.dumps(result))
+        self.assertNotIn('ABCDE1234F', json.dumps(result))
+
+        # Test rejected non-synthetic profile
+        bad_payload = dict(payload, synthetic_profile=False)
+        bad_status, _ = asyncio.run(api_request(bad_payload, '/interview/summary'))
+        self.assertEqual(bad_status, 422)
+
+        # Test weak answer gets lower points
+        weak_payload = {
+            'synthetic_profile': True,
+            'resume_skills': ['python'],
+            'answers': [
+                {
+                    'question': 'How do you use Python generators?',
+                    'transcript': 'I do not know.',
+                    'speech_confidence': 0.5
+                }
+            ]
+        }
+        status, weak_result = asyncio.run(api_request(weak_payload, '/interview/summary'))
+        self.assertEqual(status, 200)
+        self.assertLess(weak_result['total_points'], 50)
+
 
 if __name__ == '__main__':
+    import json
     unittest.main(verbosity=2)

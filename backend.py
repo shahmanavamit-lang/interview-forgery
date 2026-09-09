@@ -52,11 +52,29 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, StringConstraints
 MAX_BODY_BYTES = 128_000
 AADHAAR = re.compile(r"(?<!\w)\d{4}[ -]?\d{4}[ -]?\d{4}(?!\w)")
 PAN = re.compile(r"(?<!\w)[A-Z]{5}\d{4}[A-Z](?!\w)", re.IGNORECASE)
+# Phone: Indian mobile (+91/0 prefix optional) and international formats
+PHONE_IN = re.compile(r"(?<!\w)(?:\+91[\s.-]?|0)?[6-9]\d{4}[\s.-]?\d{5}(?!\w)")
+PHONE_INTL = re.compile(r"(?<!\w)\+\d{1,3}[\s.-]?\(?\d{1,4}\)?[\s.-]?\d{2,4}[\s.-]?\d{3,4}(?!\w)")
+EMAIL = re.compile(r"(?<!\w)[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}(?!\w)")
+# 16-digit card numbers (spaces or dashes between groups)
+CARD = re.compile(r"(?<!\w)\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}(?!\w)")
+# UPI IDs: alphanumeric@bankcode
+UPI = re.compile(r"(?<!\w)[A-Za-z0-9._%+\-]+@[a-z]{2,}(?!\w)")
+# Safety net: any remaining long digit sequences (7+ digits, with optional separators)
+LONG_DIGITS = re.compile(r"(?<!\w)\d(?:[\s.-]?\d){6,}(?!\w)")
 
 
 def sanitize(text: str) -> str:
-    """Redact common contiguous, space-separated, or hyphenated ID formats."""
-    return PAN.sub("[PAN Redacted]", AADHAAR.sub("[Aadhaar Redacted]", text))
+    """Redact PII: Aadhaar, PAN, phone, email, card numbers, UPI IDs, long digit sequences."""
+    text = EMAIL.sub("[Email Redacted]", text)
+    text = UPI.sub("[UPI Redacted]", text)
+    text = CARD.sub("[Card Redacted]", text)
+    text = AADHAAR.sub("[Aadhaar Redacted]", text)
+    text = PAN.sub("[PAN Redacted]", text)
+    text = PHONE_IN.sub("[Phone Redacted]", text)
+    text = PHONE_INTL.sub("[Phone Redacted]", text)
+    text = LONG_DIGITS.sub("[ID Redacted]", text)
+    return text
 
 
 class StrictModel(BaseModel):
@@ -230,7 +248,7 @@ class BodyLimitMiddleware:
             if message["type"] == "http.disconnect":
                 return
             body.extend(message.get("body", b""))
-            limit = 2_900_000 if scope.get("path") == "/resume" else 400_000 if scope.get("path") == "/analyze/live" else MAX_BODY_BYTES
+            limit = 2_900_000 if scope.get("path") == "/resume" else 400_000 if scope.get("path") in ("/analyze/live", "/interview/summary") else MAX_BODY_BYTES
             if len(body) > limit:
                 response = JSONResponse(status_code=413, content={"detail": "Request body too large"})
                 return await response(scope, receive, send)

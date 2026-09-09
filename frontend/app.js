@@ -6,7 +6,7 @@ let socket = null, turn = null, preparing = false, stopping = false, epoch = 0;
 let question = '', transcript = '', confidence = null, samples = [], interrupted = false;
 let lastRms = 0, lastAudioAt = -Infinity, lastVideoTime = -1, frameBusy = false;
 let visionTimer = null, clockTimer = null, analysisTimer = null, finishTimer = null;
-let latestAnalysis = null, historyCount = 0, analysisChain = Promise.resolve();
+let latestAnalysis = null, historyCount = 0, analysisChain = Promise.resolve(), interviewAnswers = [];
 let observedBlinks = 0, eyeClosedAt = null;
 const labels = {NOT_ASKED:'Not asked',LISTENING:'Listening',CHECK_TRANSCRIPT:'Check transcript',INSUFFICIENT_ANSWER:'More detail needed',FOLLOW_UP:'Follow up',VOCABULARY_PRESENT:'Terms observed'};
 function status(text) { $('status').textContent = text; }
@@ -21,6 +21,7 @@ function controls() {
   $('question-start').disabled = !connected || busy;
   $('answer-start').disabled = !connected || busy || !question;
   $('finish').disabled = !turn || turn.finishing;
+  if ($('end-interview')) $('end-interview').disabled = !interviewAnswers.length || busy;
   $('device-state').textContent = connected ? 'ON' : 'OFF';
 }
 async function post(path, payload) {
@@ -55,10 +56,11 @@ $('consent').addEventListener('change', controls);
 $('resume').addEventListener('change', async () => {
   const file = $('resume').files[0]; if (!file) return;
   clearError();
-  skills = []; question = ''; transcript = ''; latestAnalysis = null;
+  skills = []; question = ''; transcript = ''; latestAnalysis = null; interviewAnswers = [];
   $('question-text').textContent = 'No question recorded.'; $('answer-text').textContent = 'No answer recorded.';
   $('skills').replaceChildren(); $('resume-preview').hidden = true; $('resume-text').textContent = '';
   $('history').replaceChildren(); historyCount = 0; $('history-count').textContent = '0'; $('history-empty').hidden = false;
+  if ($('summary-panel')) $('summary-panel').hidden = true;
   renderSkills(); resetCapture();
   preparing = true; controls(); status('Extracting resume skills…');
   try {
@@ -212,7 +214,14 @@ async function completeTurn() {
   turn.finishing = true; controls();
   if (role === 'answer') {
     status('Reviewing the completed answer…');
-    try { await queueAnalysis(true); if (turn) addHistory(); }
+    try {
+      await queueAnalysis(true);
+      if (turn) {
+        addHistory();
+        interviewAnswers.push({question, transcript, speech_confidence: confidence});
+        controls();
+      }
+    }
     catch (error) { showError('Could not analyze the answer: ' + error.message); }
   }
   if (!turn) return;
@@ -263,6 +272,74 @@ async function stopDevices() {
   $('camera').srcObject = null; $('camera-empty').hidden = false; $('vision-state').textContent = 'NOT STARTED';
   preparing = false; stopping = false; status('Devices stopped. Completed session observations remain until reload.'); controls();
 }
+function renderSummary(data) {
+  $('summary-points').textContent = String(data.total_points);
+  $('summary-badge').textContent = `${data.total_points} / 100 PTS`;
+  $('summary-badge').className = 'tag ' + (data.total_points >= 75 ? 'present' : data.total_points >= 50 ? 'follow-up' : '');
+  $('summary-verdict').textContent = data.verdict;
+  $('summary-recommendation').textContent = data.recommendation;
+  $('summary-narrative').textContent = data.summary;
+
+  $('summary-strengths').replaceChildren();
+  for (const s of data.strengths) {
+    const li = document.createElement('li'); li.textContent = s; $('summary-strengths').append(li);
+  }
+
+  $('summary-improvements').replaceChildren();
+  for (const imp of data.areas_for_improvement) {
+    const li = document.createElement('li'); li.textContent = imp; $('summary-improvements').append(li);
+  }
+
+  $('summary-skills').replaceChildren();
+  for (const sb of data.skill_breakdowns) {
+    const card = document.createElement('div'); card.className = 'summary-skill-card';
+    const title = document.createElement('h4');
+    title.innerHTML = `${sb.skill} <span class="tag ${sb.status === 'STRONG' ? 'present' : sb.status === 'COMPETENT' ? 'follow-up' : ''}">${sb.score !== null ? sb.score + ' pts' : 'Not tested'}</span>`;
+    const desc = document.createElement('p'); desc.textContent = sb.feedback;
+    card.append(title, desc);
+    $('summary-skills').append(card);
+  }
+
+  $('summary-answers').replaceChildren();
+  for (const ans of data.answer_evaluations) {
+    const card = document.createElement('div'); card.className = 'summary-answer-card';
+    const head = document.createElement('div'); head.className = 'card-head';
+    const h4 = document.createElement('h4'); h4.textContent = `Question ${ans.index} · ${ans.rating}`;
+    const pts = document.createElement('span'); pts.className = 'points-badge'; pts.textContent = `${ans.points} / 100 pts`;
+    head.append(h4, pts);
+    const qP = document.createElement('p'); qP.className = 'ans-q'; qP.textContent = `Q: ${ans.question}`;
+    const tP = document.createElement('p'); tP.className = 'ans-t'; tP.textContent = `A: ${ans.transcript || 'No speech recognized'}`;
+    const fb = document.createElement('p'); fb.textContent = ans.feedback;
+    card.append(head, qP, tP, fb);
+    $('summary-answers').append(card);
+  }
+
+  $('summary-panel').hidden = false;
+}
+
+if ($('end-interview')) {
+  $('end-interview').addEventListener('click', async () => {
+    if (!interviewAnswers.length || preparing || turn) return;
+    clearError(); preparing = true; controls();
+    status('Analyzing all answers and evaluating candidate performance…');
+    try {
+      const result = await post('/interview/summary', {
+        synthetic_profile: $('consent').checked,
+        resume_skills: [...skills],
+        answers: interviewAnswers
+      });
+      renderSummary(result);
+      status(`Candidate evaluation complete: ${result.total_points}/100 points. ${result.verdict}.`);
+      $('summary-panel').scrollIntoView({behavior:'smooth'});
+    } catch (err) {
+      showError('Could not generate candidate summary: ' + err.message);
+      status('Candidate summary could not be generated.');
+    } finally {
+      preparing = false; controls();
+    }
+  });
+}
+
 $('question-start').addEventListener('click', () => startTurn('question'));
 $('answer-start').addEventListener('click', () => startTurn('answer'));
 $('finish').addEventListener('click', finishTurn);
