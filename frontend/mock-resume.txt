@@ -1,0 +1,5 @@
+SYNTHETIC MOCK PROFILE — NOT A REAL CANDIDATE
+Candidate: Demo Engineer
+Skills: Python, SQL, FastAPI, Docker
+Projects: Built a mock inventory API using Python and FastAPI, SQL queries for reports, and Docker containers for local development.
+Education: Fictional engineering campus, mock graduating class.

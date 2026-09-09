@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1 · Interview integrity</title>
+<meta name="description" content="Evaluate synthetic interview skill consistency and integrity signals.">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/demo.js" defer></script>
+</head>
+<body>
+<header><a class="brand" href="/">P1 <span>Interview integrity</span></a><span class="badge">Manual simulator</span></header>
+<main>
+<div class="intro"><p class="eyebrow">DEEPFAKE INTERVIEW ALERT TOOL</p><h1>Evaluate an interview</h1><p>Compare claimed skills and simulated integrity signals. Keep the final judgment human.</p></div>
+<div class="workspace">
+<section class="panel"><form id="evaluation-form">
+<div class="section-title"><h2>Interview inputs</h2><span>01</span></div>
+<fieldset class="presets"><legend>Load a synthetic case</legend><div class="buttons"><button type="button" data-case="normal">Normal</button><button type="button" data-case="edge">Network jitter</button><button type="button" data-case="high">High risk</button></div></fieldset>
+<label for="skills">Claimed resume skills</label><input id="skills" required maxlength="3000" placeholder="Python, SQL" aria-describedby="skills-help"><small id="skills-help">Separate skills with commas. Up to 30 skills.</small>
+<label for="transcript">Interview transcript</label><textarea id="transcript" required maxlength="50000" rows="6" placeholder="Enter a synthetic technical interview answer…"></textarea>
+<div class="section-title telemetry-title"><h2>Simulated telemetry</h2><span>02</span></div>
+<div class="fields">
+<div><label for="gaze_diversion_ratio">Gaze diversion <span>(0–1)</span></label><input id="gaze_diversion_ratio" type="number" min="0" max="1" step="any" required value="0.1"></div>
+<div><label for="synthetic_voice_confidence">Synthetic voice <span>(0–1)</span></label><input id="synthetic_voice_confidence" type="number" min="0" max="1" step="any" required value="0"></div>
+<div><label for="lip_sync_variance_ms">Lip-sync variance <span>(ms)</span></label><input id="lip_sync_variance_ms" type="number" min="0" max="60000" step="any" required value="20"></div>
+<div><label for="network_latency_ms">Network latency <span>(ms)</span></label><input id="network_latency_ms" type="number" min="0" max="60000" step="any" required value="0"></div>
+<div><label for="network_jitter_ms">Network jitter <span>(ms)</span></label><input id="network_jitter_ms" type="number" min="0" max="60000" step="any" required value="0"></div>
+<div><label for="packet_loss_percent">Packet loss <span>(%)</span></label><input id="packet_loss_percent" type="number" min="0" max="100" step="any" required value="0"></div>
+</div>
+<p class="network-note">Reported network disturbance excludes lip-sync variance from the score.</p>
+<label class="confirmation"><input id="synthetic" type="checkbox" required> I confirm this profile and transcript are synthetic.</label>
+<p id="error" role="alert" hidden></p>
+<button class="primary" id="evaluate" type="submit">Evaluate interview <span aria-hidden="true">→</span></button>
+</form></section>
+<aside class="panel result" aria-live="polite" aria-atomic="true">
+<div class="section-title"><h2>Evaluation</h2><span>03</span></div>
+<div id="empty"><div class="empty-symbol" aria-hidden="true">—</div><h3>Ready when you are</h3><p>Load a demo or enter synthetic inputs, then evaluate to see the score and recommended next step.</p></div>
+<div id="result" hidden><div class="score-row"><p class="score"><span id="score">0</span><span class="denominator">/ 100</span></p><span id="tier" class="tier">LOW</span></div><p class="score-label">Impersonation risk · heuristic score</p><div class="meter" aria-hidden="true"><div id="meter-fill"></div></div><h3>Why this score</h3><p id="reason"></p><div class="action-box"><p class="eyebrow">RECOMMENDED NEXT STEP</p><p id="action"></p></div></div>
+<div class="human-note"><strong>Decision support only</strong><p>Simulated signals are not proof of impersonation. This tool does not make hiring decisions.</p></div>
+</aside>
+</div><footer>Aadhaar and PAN identifiers are redacted before analysis. Inputs are not saved.</footer>
+</main></body></html>
