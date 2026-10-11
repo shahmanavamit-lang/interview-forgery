@@ -16,14 +16,14 @@ python setup_models.py
 python backend.py
 ```
 
-Open http://127.0.0.1:8000. The speech model and browser vision assets are already installed in this workspace. `setup_models.py` is for a fresh checkout and downloads a checksum-verified 40 MB model. The Vosk model uses approximately 300 MB of RAM, so automatic recognition has a larger footprint than the original keyword-only simulator.
+Open http://127.0.0.1:8000. Browser vision assets are included. `setup_models.py` downloads a checksum-verified 40 MB speech model over certificate-verified HTTPS, or reuses an existing installation. The Vosk model uses approximately 300 MB of RAM, so automatic recognition has a larger footprint than the original keyword-only simulator.
 
 1. Confirm you are conducting a consented mock interview with a synthetic profile.
 2. Upload a TXT, text-based PDF (at most 10 pages) or DOCX resume up to 2 MB. A downloadable mock resume is provided. Scanned PDFs need OCR first.
 3. Select **Enable camera & microphone** and approve the browser’s device request.
 4. Select **Record interviewer question**, ask e.g. “Explain Python generators and how you use them,” then **Finish turn**.
 5. Select **Record candidate answer**, speak, then **Finish turn**. Questions and answers are automatically transcribed; no manual telemetry is required. Each turn is limited to 3 minutes.
-6. Review the recognized text, skill follow-ups and camera observations. Repeat for another question. **Stop devices** releases capture; changing tabs also stops capture to avoid using interrupted video.
+6. Review the recognized text, skill follow-ups and camera observations. Repeat for another question. **Review session summary** aggregates the latest 10 completed answers using the same evidence rules as the live view; it does not stop devices. **Stop devices** releases capture; changing tabs also stops capture to avoid using interrupted video.
 
 Use headphones or a quiet room. The system separates speakers through turn controls, not automatic speaker identification. Transcription is English-only and can misrecognize technical terms or accents. Low confidence and short answers produce explicit “check transcript” or “more detail needed” states. A transcription mistake should be resolved by recording the turn again before interpreting a flag.
 
@@ -34,7 +34,8 @@ Use headphones or a quiet room. The system separates speakers through turn contr
 - Identification of the skill asked about, vocabulary evidence in the answer, and targeted follow-up prompts. Skills not identified in the question remain unassessed.
 - Browser-local face landmarks, face count, and eye-closure counts.
 - Exploratory audio-energy/mouth-opening timing correlation using local capture timestamps. Dropped frames, missing faces, stale audio and interrupted capture exclude timing analysis.
-- Session-only answer history, limited to the latest 10 entries. Reloading clears it.
+- Session-only answer history and summary, both limited to the latest 10 entries. Reloading clears them.
+- Summary observations exclude low-confidence, missing-confidence, short and unscoped answers from vocabulary evidence. They do not award candidate points or make hiring recommendations.
 
 ## Limits that the interface makes explicit
 
@@ -46,24 +47,53 @@ This is a functional hackathon observation workflow, not a production biometric 
 
 ## APIs
 
-The existing `POST /evaluate` simulator contract is unchanged. It remains available through **Manual simulator** and its embedded synthetic demos; its simulated scores are not used by the live workflow. `design.md` was not provided, so these are documented provisional interfaces.
+The existing `POST /evaluate` simulator contract is unchanged. It remains available through **Manual simulator** and its embedded synthetic demos; its simulated scores are not used by the live workflow. The simulator is separate from the live observation workflow.
 
 - `GET /capabilities`: local speech/vision availability and unavailable authenticity detectors.
 - `POST /resume`: `{synthetic_profile: true, filename: "mock.txt", content_base64: "..."}` → `skills`, `redacted_text`, supported vocabulary and notice.
 - `WS /interview/stream`: same-origin socket. Send `{ "synthetic_profile": true }`; wait for `ready`; stream mono signed 16-bit little-endian PCM at 16 kHz, at most 32 KB per frame. Send the literal text `finish` to flush. Results contain `text`, `final`, `confidence` (ASR only) and `audio_seconds`. At most four concurrent streams; 3-minute audio limit and 20-second idle timeout. Partial/final text is redacted before returning.
+- `POST /interview/summary`: synthetic attestation, `resume_skills`, and at most 10 `answers` containing `question`, `transcript`, and optional `speech_confidence`. Returns retained/reviewed answer counts, skill follow-ups and per-answer observations. Legacy numeric `total_points`, `score` and `points` fields are now `null`; consumers must not treat them as numbers.
 - `POST /analyze/live`: synthetic attestation, `resume_skills`, `question`, `transcript`, `final`, optional `speech_confidence`, `samples`, `capture_interrupted`. Samples are ordered browser-derived `{t, faces, blink, mouth, rms, audio_fresh}` measurements. Returns per-skill assessments, capture observations, unassessed authenticity decision and next action.
 
 All documents, speech and samples are untrusted. Validation errors do not echo inputs. Resume text and transcriptions are sanitized before semantic analysis. No interview files are persisted and no external recognition service is called. Synthetic provenance remains the caller’s attestation.
 
+## Project layout
+
+```text
+backend.py                 HTTP app, simulator, request limits, local server entry
+live.py                    Upload parsing, speech streaming and live observations
+setup_models.py            Verified local speech-model installer
+requirements.txt           Pinned application dependencies
+frontend/                  Browser UI, styles, audio capture and synthetic demo
+frontend/vendor/           Required local vision runtime, models and license notice
+models/                    Downloaded speech model (ignored by Git)
+tests/                     Backend, live workflow, protocol and browser regressions
+```
+
+The vendor files and models are required for offline processing; they are not disposable clutter. No Node build is needed to run the app.
+
 ## Verify
 
 ```sh
+python -m unittest discover -v
+# Equivalent convenience entry point:
 python backend.py --test
-python test_live.py
 node --check frontend/app.js
 node --check frontend/pcm-worklet.js
+node --check frontend/demo.js
 ```
 
-The original five test groups and eight live-workflow groups cover scoring, redaction, upload validation, question scope, speech-confidence gates, timing-quality suppression and non-scoring blink observations. A real WebSocket transcription check with synthesized speech was also run locally. Physical camera/microphone capture requires the user’s browser permission and has not been hardware-tested by the agent.
+The Python suite covers simulator behavior, redaction, document parsing, confidence and question-scope gates, capture quality, summary retention/body limits, and the WebSocket protocol with a stub recognizer.
 
-Main files: `backend.py` (existing evaluator and serving), `live.py` (automatic workflow), `frontend/` (UI and local vision assets), `setup_models.py` (speech setup). No Node packages or UI build step are required.
+Optional browser regression: with Playwright available and Chrome installed, start `python backend.py --port 8765` in one terminal and run `node tests/browser.cjs` in another. It uses synthetic camera/microphone input and scripted speech responses; it checks upload, responsive layout, cancellation, eleven Q&A turns, summary retention and the simulator. It does not validate physical devices or real speech-recognition accuracy.
+
+## Troubleshooting
+
+- **Speech model missing:** run `python setup_models.py` from the project environment. The model is needed for recorded turns, but not the manual simulator.
+- **Certificate verification fails during download:** repair your Python/system CA certificates or configure `SSL_CERT_FILE` to your trusted CA bundle. Do not disable certificate checks. A checksum mismatch also stops installation.
+- **Camera or microphone unavailable:** use localhost or HTTPS, check browser permissions, close another app using the device, and reconnect. Pending device requests can be cancelled with **Stop devices**.
+- **Unsupported audio sample rate:** the app requires a 16 kHz AudioContext. Try a current desktop Chrome browser.
+- **No readable resume text:** use UTF-8 TXT or a text-based PDF/DOCX. Scanned PDFs require OCR before upload.
+- **Transcription or analysis timeout:** reconnect or retry the turn. Incomplete captures are discarded; summaries never establish correctness or authenticity.
+
+Compatibility note: tests formerly embedded in `backend.py` and the root `test_live.py` now live under `tests/`. Use the discovery command above. The live summary intentionally replaces unsupported candidate grades with observations; the separate `/evaluate` simulator contract is unchanged.

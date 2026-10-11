@@ -2,12 +2,14 @@
 import asyncio
 import base64
 import io
+import json
 import math
 import unittest
 import zipfile
 from unittest.mock import patch
 
-from backend import api_request, sanitize, VOCABULARY
+from backend import sanitize, VOCABULARY
+from tests.support import api_request
 from live import LiveInput, Sample, analyze_answer, analyze_capture, extract_document
 
 
@@ -114,9 +116,9 @@ class LiveWorkflowTests(unittest.TestCase):
         }
         status, result = asyncio.run(api_request(payload, '/interview/summary'))
         self.assertEqual(status, 200)
-        self.assertGreaterEqual(result['total_points'], 80)
-        self.assertEqual(result['verdict'], 'Strong Technical Performance')
-        self.assertIn('High Recommendation', result['recommendation'])
+        self.assertIsNone(result['total_points'])
+        self.assertEqual(result['reviewed_answers'], 2)
+        self.assertEqual(result['verdict'], 'Session observations ready')
         self.assertEqual(len(result['answer_evaluations']), 2)
         self.assertNotIn('9876543210', json.dumps(result))
         self.assertNotIn('ABCDE1234F', json.dumps(result))
@@ -140,7 +142,8 @@ class LiveWorkflowTests(unittest.TestCase):
         }
         status, weak_result = asyncio.run(api_request(weak_payload, '/interview/summary'))
         self.assertEqual(status, 200)
-        self.assertLess(weak_result['total_points'], 50)
+        self.assertIsNone(weak_result['total_points'])
+        self.assertEqual(weak_result['reviewed_answers'], 0)
 
 
 if __name__ == '__main__':

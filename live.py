@@ -81,7 +81,7 @@ class AnswerRecord(BaseModel):
 
 class SummaryInput(Input):
     resume_skills: Annotated[list[Annotated[str, Field(min_length=1, max_length=100)]], Field(min_length=1, max_length=30)]
-    answers: Annotated[list[AnswerRecord], Field(max_length=50)] = Field(default_factory=list)
+    answers: Annotated[list[AnswerRecord], Field(max_length=10)] = Field(default_factory=list)
 
 
 def load_speech_model():
@@ -149,13 +149,13 @@ ALIASES = {'python': ['python', 'python3'], 'sql': ['sql', 'postgresql', 'mysql'
 
 
 def claimed_skills(text, vocabulary):
-    normalized = words(text)
+    normalized = words(text).replace('java script', 'javascript')
     return [skill for skill in vocabulary if any(contains(normalized, a) for a in ALIASES.get(skill, [skill]))]
 
 
 def analyze_answer(payload, sanitize, vocabulary):
     question, transcript = sanitize(payload.question), sanitize(payload.transcript)
-    question_words, answer_words = words(question), words(transcript)
+    question_words, answer_words = words(question).replace('java script', 'javascript'), words(transcript)
     skills = sorted({words(sanitize(s)) for s in payload.resume_skills if words(sanitize(s)) in vocabulary})
     # Explicit skill mentions establish scope. A question with no skill name
     # can use domain-specific terms, excluding terms shared across domains.
@@ -256,170 +256,49 @@ def analyze_capture(samples, interrupted):
 
 
 def judge_candidate(payload: SummaryInput, sanitize, vocabulary):
-    raw_skills = [words(sanitize(s)) for s in payload.resume_skills]
-    skills = sorted({s for s in raw_skills if s in vocabulary})
-
-    answer_evaluations = []
-    skill_hits = {skill: set() for skill in skills}
-    skill_targeted_counts = {skill: 0 for skill in skills}
-
-    for idx, ans in enumerate(payload.answers, start=1):
-        q_clean = sanitize(ans.question)
-        t_clean = sanitize(ans.transcript)
-        q_words = words(q_clean)
-        t_words = words(t_clean)
-        word_count = len(t_words.split())
-
-        targeted = [s for s in skills if any(contains(q_words, a) for a in ALIASES.get(s, [s]))]
-        if not targeted:
-            for s in skills:
-                unique = [term for term in vocabulary.get(s, ()) if sum(term in vals for vals in vocabulary.values()) == 1]
-                if any(contains(q_words, term) for term in unique):
-                    targeted.append(s)
-
-        eval_skills = targeted if targeted else skills
-        for s in targeted:
-            skill_targeted_counts[s] += 1
-
-        matched_terms_for_answer = {}
-        for s in eval_skills:
-            terms = [term for term in vocabulary.get(s, ()) if contains(t_words, term)]
-            if terms:
-                matched_terms_for_answer[s] = terms
-                skill_hits[s].update(terms)
-
-        all_matched = [term for terms in matched_terms_for_answer.values() for term in terms]
-
-        # 1. Technical Vocabulary (up to 50 points)
-        vocab_score = min(50, len(all_matched) * 25)
-
-        # 2. Answer Depth & Substance (up to 35 points)
-        if word_count >= 30:
-            depth_score = 35
-        elif word_count >= 20:
-            depth_score = 25
-        elif word_count >= 12:
-            depth_score = 15
-        elif word_count > 0:
-            depth_score = 5
-        else:
-            depth_score = 0
-
-        # 3. Speech Clarity & Confidence (up to 15 points)
-        conf = ans.speech_confidence
-        if conf is not None:
-            if conf >= 0.80:
-                clarity_score = 15
-            elif conf >= 0.65:
-                clarity_score = 10
-            elif conf >= 0.50:
-                clarity_score = 5
-            else:
-                clarity_score = 2
-        else:
-            clarity_score = 10
-
-        answer_points = min(100, vocab_score + depth_score + clarity_score)
-
-        if answer_points >= 80:
-            rating = "Strong Answer"
-            feedback = f"Strong technical response with relevant terminology ({', '.join(all_matched) if all_matched else 'good depth'})."
-        elif answer_points >= 60:
-            rating = "Good Answer"
-            feedback = "Solid answer addressing the core concepts effectively."
-        elif answer_points >= 40:
-            rating = "Basic Answer"
-            feedback = "Basic response; could benefit from more specific technical details and examples."
-        else:
-            rating = "Needs Improvement"
-            feedback = "Brief or limited response; missing key technical terms for the tested domain."
-
-        answer_evaluations.append({
-            "index": idx,
-            "question": q_clean,
-            "transcript": t_clean,
-            "points": answer_points,
-            "rating": rating,
-            "matched_terms": all_matched,
-            "feedback": feedback
+    """Aggregate the same evidence gates as the live view; never grade competence."""
+    evaluations, by_skill = [], {}
+    reviewed = 0
+    for index, answer in enumerate(payload.answers, 1):
+        live = LiveInput(synthetic_profile=True, resume_skills=payload.resume_skills,
+                         question=answer.question, transcript=answer.transcript,
+                         speech_confidence=answer.speech_confidence, final=True)
+        question, transcript, assessments = analyze_answer(live, sanitize, vocabulary)
+        scoped = [a for a in assessments if a['status'] != 'NOT_ASKED']
+        usable = any(a['status'] in ('FOLLOW_UP', 'VOCABULARY_PRESENT') for a in scoped)
+        reviewed += int(usable)
+        for item in assessments:
+            by_skill.setdefault(item['skill'], []).append(item)
+        evaluations.append({
+            'index': index, 'question': question, 'transcript': transcript,
+            'points': None,
+            'rating': 'Review observations' if usable else 'More evidence needed',
+            'matched_terms': sorted({t for a in scoped if a['status'] == 'VOCABULARY_PRESENT' for t in a['matched_terms']}),
+            'feedback': ' '.join(a['message'] for a in scoped) or 'No supported skill was identified in this question.',
         })
-
-    skill_breakdowns = []
-    for s in skills:
-        matched = sorted(skill_hits[s])
-        targeted_count = skill_targeted_counts[s]
-        if targeted_count == 0 and not matched:
-            skill_breakdowns.append({
-                "skill": s,
-                "score": None,
-                "status": "NOT_EVALUATED",
-                "matched_terms": [],
-                "feedback": "Skill was not covered in the interview questions."
-            })
-        else:
-            term_score = min(60, len(matched) * 30)
-            coverage_score = 40 if targeted_count > 0 and len(matched) >= 1 else 20
-            skill_points = min(100, term_score + coverage_score)
-            status = "STRONG" if skill_points >= 75 else "COMPETENT" if skill_points >= 50 else "NEEDS_IMPROVEMENT"
-            feedback = f"Demonstrated terms: {', '.join(matched)}" if matched else "Limited domain terminology demonstrated."
-            skill_breakdowns.append({
-                "skill": s,
-                "score": skill_points,
-                "status": status,
-                "matched_terms": matched,
-                "feedback": feedback
-            })
-
-    if answer_evaluations:
-        total_points = round(sum(a["points"] for a in answer_evaluations) / len(answer_evaluations))
-    else:
-        total_points = 0
-
-    if total_points >= 80:
-        verdict = "Strong Technical Performance"
-        recommendation = "High Recommendation: Candidate exhibited strong technical vocabulary and thorough explanations."
-    elif total_points >= 65:
-        verdict = "Qualified Technical Performance"
-        recommendation = "Recommendation: Candidate demonstrated good baseline technical competence across tested topics."
-    elif total_points >= 50:
-        verdict = "Moderate Technical Performance"
-        recommendation = "Conditional Recommendation: Candidate grasped basic concepts but would benefit from further deep-dive validation."
-    elif total_points > 0:
-        verdict = "Needs Improvement"
-        recommendation = "Follow-up Required: Answers showed limited technical depth and terminology."
-    else:
-        verdict = "No Answers Evaluated"
-        recommendation = "No interview answers were provided for assessment."
-
-    strengths = []
-    improvements = []
-    for sb in skill_breakdowns:
-        if sb["status"] == "STRONG":
-            strengths.append(f"Demonstrated command of {sb['skill']} concepts ({', '.join(sb['matched_terms'])}).")
-        elif sb["status"] == "NEEDS_IMPROVEMENT":
-            improvements.append(f"Follow up on {sb['skill']} implementation and architecture.")
-        elif sb["status"] == "NOT_EVALUATED":
-            improvements.append(f"Assess {sb['skill']} in future interview questions.")
-
-    if not strengths:
-        strengths.append("Engaged with interview questions and provided structured responses.")
-    if not improvements:
-        improvements.append("Candidate answered tested skill areas thoroughly.")
-
-    summary_text = (
-        f"Candidate completed {len(answer_evaluations)} question-and-answer turn(s), achieving an overall score of {total_points}/100 points. "
-        f"{verdict}. {recommendation}"
-    )
-
+    breakdowns, strengths, improvements = [], [], []
+    for skill, items in sorted(by_skill.items()):
+        observed = [a for a in items if a['status'] == 'VOCABULARY_PRESENT']
+        followup = [a for a in items if a['status'] in ('CHECK_TRANSCRIPT', 'INSUFFICIENT_ANSWER', 'FOLLOW_UP')]
+        terms = sorted({t for a in observed for t in a['matched_terms']})
+        status = 'FOLLOW_UP' if followup else 'VOCABULARY_PRESENT' if observed else 'NOT_ASKED'
+        feedback = ('Follow-up or transcript review is needed for at least one answer.' if followup
+                    else 'Relevant terms were observed; verify correctness with an implementation example.' if observed
+                    else 'This skill was not identified in the questions.')
+        breakdowns.append({'skill': skill, 'score': None, 'status': status,
+                           'matched_terms': terms, 'feedback': feedback})
+        if terms:
+            strengths.append(f"{skill}: observed {', '.join(terms)}.")
+        if followup or not observed:
+            improvements.append(f'{skill}: {feedback}')
     return {
-        "total_points": total_points,
-        "verdict": verdict,
-        "recommendation": recommendation,
-        "summary": summary_text,
-        "strengths": strengths,
-        "areas_for_improvement": improvements,
-        "skill_breakdowns": skill_breakdowns,
-        "answer_evaluations": answer_evaluations
+        'total_points': None, 'reviewed_answers': reviewed, 'answer_count': len(evaluations),
+        'verdict': 'Session observations ready' if reviewed else 'More evidence needed',
+        'recommendation': 'Review transcripts and ask for concrete examples. Vocabulary and speech recognition confidence do not establish technical competence.',
+        'summary': f'{reviewed} of {len(evaluations)} retained answers had enough reliable, in-scope speech for vocabulary observations. No candidate grade or hiring recommendation is generated.',
+        'strengths': strengths or ['No reliable technical vocabulary observations yet.'],
+        'areas_for_improvement': improvements or ['Review correctness and depth with the interviewer.'],
+        'skill_breakdowns': breakdowns, 'answer_evaluations': evaluations,
     }
 
 
@@ -428,7 +307,7 @@ def register_live(app, sanitize, vocabulary):
 
     @app.get('/capabilities')
     def capabilities():
-        return {'speech': 'LOCAL_VOSK' if MODEL_PATH.is_dir() else 'MODEL_MISSING',
+        return {'speech': 'LOCAL_VOSK' if (MODEL_PATH / 'am' / 'final.mdl').is_file() else 'MODEL_MISSING',
                 'video': 'LOCAL_FACE_LANDMARKS', 'synthetic_only': True,
                 'voice_clone_detection': 'UNAVAILABLE', 'deepfake_detection': 'UNAVAILABLE'}
 

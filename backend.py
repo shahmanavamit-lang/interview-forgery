@@ -34,10 +34,7 @@ external deployment. Dependency installation is the only setup required.
 from __future__ import annotations
 
 import argparse
-import asyncio
-import json
 import re
-import unittest
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -248,7 +245,8 @@ class BodyLimitMiddleware:
             if message["type"] == "http.disconnect":
                 return
             body.extend(message.get("body", b""))
-            limit = 2_900_000 if scope.get("path") == "/resume" else 400_000 if scope.get("path") in ("/analyze/live", "/interview/summary") else MAX_BODY_BYTES
+            limits = {"/resume": 2_900_000, "/interview/summary": 2_200_000, "/analyze/live": 400_000}
+            limit = limits.get(scope.get("path"), MAX_BODY_BYTES)
             if len(body) > limit:
                 response = JSONResponse(status_code=413, content={"detail": "Request body too large"})
                 return await response(scope, receive, send)
@@ -282,113 +280,6 @@ def evaluate(payload: EvaluationRequest) -> EvaluationResponse:
     return evaluate_profile(payload)
 
 
-def demo_payload(case: str) -> dict:
-    data = {
-        "synthetic_profile": True,
-        "resume_skills": ["Python", "SQL"],
-        "transcript": ("In Python I use generators to yield values with an iterator and handle exceptions. "
-                       "In SQL I inspect the query plan, add an index, and use joins within a transaction."),
-        "metadata": {"gaze_diversion_ratio": 0.1, "synthetic_voice_confidence": 0.0,
-                     "lip_sync_variance_ms": 20.0, "network_latency_ms": 0.0,
-                     "network_jitter_ms": 0.0, "packet_loss_percent": 0.0},
-    }
-    if case == "edge":
-        data["metadata"].update(network_latency_ms=500.0, network_jitter_ms=200.0,
-                                packet_loss_percent=15.0, lip_sync_variance_ms=1500.0)
-    elif case == "high":
-        data["transcript"] = ("I usually coordinate meetings and discuss schedules with the team. "
-                              "I cannot explain the technical implementation or describe how any of these systems work in practice.")
-        data["metadata"].update(synthetic_voice_confidence=0.95, lip_sync_variance_ms=400.0,
-                                gaze_diversion_ratio=0.9)
-    return data
-
-
-async def api_request(payload: dict | bytes, path: str = "/evaluate", method: str = "POST") -> tuple[int, dict]:
-    """Exercise the full ASGI app without a third-party HTTP test client."""
-    body = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
-    messages = []
-
-    async def receive():
-        return {"type": "http.request", "body": body, "more_body": False}
-
-    async def send(message):
-        messages.append(message)
-
-    await app({"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
-               "method": method, "scheme": "http", "path": path, "raw_path": path.encode(),
-               "query_string": b"", "root_path": "", "headers": [(b"content-type", b"application/json")],
-               "server": ("test", 80), "client": ("test", 123)}, receive, send)
-    status = next(m["status"] for m in messages if m["type"] == "http.response.start")
-    content = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
-    return status, json.loads(content)
-
-
-class BackendTests(unittest.TestCase):
-    def test_three_demo_cases(self):
-        scores = {}
-        for case, tier in (("normal", "LOW"), ("edge", "LOW"), ("high", "HIGH")):
-            status, result = asyncio.run(api_request(demo_payload(case)))
-            self.assertEqual(status, 200)
-            self.assertEqual(set(result), {"decision", "reason", "next_action"})
-            self.assertEqual(result["decision"]["risk_tier"], tier)
-            self.assertIs(type(result["decision"]["risk_score"]), int)
-            self.assertEqual(len(re.findall(r"\.(?: |$)", result["reason"])), 3)
-            scores[case] = result["decision"]["risk_score"]
-            print(f"\n{case}: {json.dumps(result)}")
-        self.assertEqual(scores["normal"], scores["edge"])
-
-    def test_network_suppression_and_independent_voice(self):
-        for field in ("network_latency_ms", "network_jitter_ms", "packet_loss_percent"):
-            data = demo_payload("normal")
-            data["metadata"].update(lip_sync_variance_ms=60_000.0)
-            data["metadata"][field] = 1.0
-            _, result = asyncio.run(api_request(data))
-            self.assertEqual(result["decision"]["risk_score"], 0)
-            data["metadata"]["synthetic_voice_confidence"] = 1.0
-            _, result = asyncio.run(api_request(data))
-            self.assertEqual(result["decision"]["risk_score"], 40)
-
-    def test_redaction_before_analysis(self):
-        from unittest.mock import patch
-        data = demo_payload("normal")
-        secret = "1234 5678 9012 ABCDE1234F"
-        data["transcript"] += " " + secret
-        data["resume_skills"].append(secret)
-        with patch(__name__ + ".semantic_consistency", wraps=semantic_consistency) as analyzer:
-            status, response = asyncio.run(api_request(data))
-            self.assertEqual(status, 200)
-            args = analyzer.call_args.args
-            self.assertNotIn(secret, str(args))
-            self.assertIn("[Aadhaar Redacted] [PAN Redacted]", args[1])
-            self.assertNotIn(secret, json.dumps(response))
-        for number in ("123456789012", "1234-5678-9012", "1234 5678 9012"):
-            self.assertEqual(sanitize(number), "[Aadhaar Redacted]")
-        self.assertEqual(sanitize("abcde1234f"), "[PAN Redacted]")
-
-    def test_invalid_requests_do_not_echo_inputs(self):
-        for field, value in (("synthetic_profile", False), ("synthetic_profile", "true"),
-                             ("transcript", " "), ("resume_skills", []), ("extra", "ABCDE1234F")):
-            data = demo_payload("normal")
-            data[field] = value
-            status, response = asyncio.run(api_request(data))
-            self.assertEqual(status, 422)
-            self.assertNotIn("ABCDE1234F", json.dumps(response))
-        for value in (-1, 1.1, "0.5", float("nan"), float("inf")):
-            data = demo_payload("normal")
-            data["metadata"]["synthetic_voice_confidence"] = value
-            self.assertEqual(asyncio.run(api_request(data))[0], 422)
-        self.assertEqual(asyncio.run(api_request(b'{invalid ABCDE1234F'))[0], 422)
-        self.assertEqual(asyncio.run(api_request(b"x" * (MAX_BODY_BYTES + 1)))[0], 413)
-        self.assertEqual(asyncio.run(api_request({}, method="GET"))[0], 405)
-        self.assertEqual(asyncio.run(api_request({}, path="/docs"))[0], 404)
-
-    def test_insufficient_evidence(self):
-        for transcript, skills in (("Brief answer", ["Python"]), (demo_payload("normal")["transcript"], ["Unknown skill"])):
-            data = demo_payload("normal")
-            data.update(transcript=transcript, resume_skills=skills)
-            _, result = asyncio.run(api_request(data))
-            self.assertEqual(result["decision"]["risk_score"], 0)
-            self.assertEqual(result["next_action"], "ask targeted follow-up questions")
 
 
 from live import register_live
@@ -402,7 +293,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     if args.test:
-        unittest.main(argv=["backend.py"], verbosity=2)
+        import unittest
+        suite = unittest.defaultTestLoader.discover(str(Path(__file__).parent / "tests"), top_level_dir=str(Path(__file__).parent))
+        raise SystemExit(not unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful())
     else:
         import uvicorn
         uvicorn.run(app, host=args.host, port=args.port, access_log=False)

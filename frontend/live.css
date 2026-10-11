@@ -1,1 +1,380 @@
-.live-main{max-width:1440px}.live-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);gap:24px}.main-column,.side-column{display:flex;flex-direction:column;gap:24px}header nav{display:flex;gap:20px;align-items:center}a{color:#245bd8}nav a,.section-title a{font-size:14px}.session-status{padding:12px 16px;border:1px solid #c9d7ec;border-radius:8px;background:#eaf1fc;color:#274d80}.skill-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.skill-chips span{background:#eaf1fc;border:1px solid #c9d9f3;color:#24529a;padding:4px 12px;border-radius:5px;text-transform:capitalize;font-size:14px}input[type=file]{border:1px dashed #afbed2!important;background:#f7f9fc!important;padding:20px!important}input[type=file]::file-selector-button{border:0;border-radius:4px;background:#e0e9fa;padding:8px 12px;color:#274d80;margin-right:12px;cursor:pointer}details{margin-top:16px}summary{cursor:pointer;font-size:14px;color:#41608a}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:14px;max-height:200px;overflow:auto;background:#f5f7fb;padding:14px;border-radius:6px}.camera{position:relative;aspect-ratio:16/9;background:#111c2d;border-radius:8px;overflow:hidden}video{width:100%;height:100%;object-fit:contain}#camera-empty{position:absolute;inset:0;display:grid;place-items:center;color:#a6b5cb}#recording-label{position:absolute;left:14px;top:14px;background:#245bd8;color:white;border-radius:4px;padding:5px 10px;font-size:13px}.capture-note,.muted{font-size:14px;color:#5b697c;line-height:1.7}.capture-controls{margin:18px 0}.capture-controls .primary{width:auto;flex:1;display:block}.turn-controls{display:flex;gap:8px;flex-wrap:wrap;padding-top:20px;border-top:1px solid #e3e9f1}#timer{font:15px monospace;padding:10px;color:#46617e}.turn-controls+small{margin-top:12px;font-size:13px}.transcript-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.transcript{font-size:15px;background:#f5f7fb;border-radius:7px;padding:14px;min-height:120px;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#42546b}.metrics{display:grid;gap:14px}.metrics>div{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #e7edf4;padding-bottom:12px}.metrics span{font-size:14px;color:#5b697c}.metrics strong{font-size:15px;text-align:right}#observations{padding-left:20px;color:#5b697c;font-size:14px}#observations li{margin:10px 0}.skill-result{border-top:1px solid #e4eaf3;padding:16px 0}.skill-result h3{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin:0;text-transform:capitalize}.skill-result p{font-size:14px;color:#5b697c;margin:8px 0 0}.tag{font-size:12px;letter-spacing:.02em;background:#edf1f6;color:#5a6d85;border-radius:4px;padding:3px 7px;text-transform:none;font-weight:600}.tag.follow-up{background:#fff0d6;color:#865806}.tag.present{background:#e6f6ed;color:#206142}.limitation{background:#eaf0f9;border-color:#d0dbee}.limitation h2{font-size:17px;margin:0 0 12px}.limitation p{font-size:14px;color:#51647f}.history-item{border-top:1px solid #dce3ec;padding:14px 0}.history-item summary{color:#17283d}.history-item p{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}#vision-state,#device-state{font-size:12px;text-align:right}button:disabled{cursor:not-allowed}.section-title{gap:16px}@media(max-width:1000px){.live-layout{grid-template-columns:1fr}.side-column{display:grid;grid-template-columns:1fr 1fr}.limitation{grid-column:1/-1}}@media(max-width:640px){header{height:auto;min-height:78px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}header nav{gap:12px}.side-column,.transcript-grid{display:flex;flex-direction:column}.section-title{flex-wrap:wrap}.turn-controls button{flex:1 1 40%}.capture-controls .primary{font-size:14px}.camera{aspect-ratio:4/3}}.summary-header{display:flex;align-items:center;gap:20px;background:#f5f8fc;border:1px solid #d4e0f0;border-radius:8px;padding:16px;margin:16px 0}.score-card{text-align:center;min-width:110px;background:#245bd8;color:#fff;border-radius:8px;padding:12px 14px}.score-num{font-size:32px;font-weight:700;line-height:1}.score-denom{font-size:16px;opacity:.85}.score-title{font-size:11px;margin:6px 0 0;text-transform:uppercase;letter-spacing:.05em}.summary-meta h3{margin:0 0 6px;font-size:18px;color:#182b45}.summary-meta p{margin:0;font-size:14px;color:#51657e}.summary-body h3{margin:18px 0 8px;font-size:16px;color:#1d3049}.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0}.summary-grid h4{margin:0 0 8px;font-size:14px;color:#245bd8}.summary-list{margin:0;padding-left:18px;font-size:14px;color:#43556d;line-height:1.6}.summary-list li{margin-bottom:6px}.summary-skill-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}.summary-skill-card{border:1px solid #e0e7f1;border-radius:6px;padding:12px;background:#fafbfd}.summary-skill-card h4{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;text-transform:capitalize}.summary-skill-card p{margin:0;font-size:13px;color:#5a6d85;line-height:1.4}.summary-answer-cards{display:flex;flex-direction:column;gap:12px}.summary-answer-card{border:1px solid #e0e7f1;border-radius:6px;padding:14px;background:#fafbfd}.summary-answer-card .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px}.summary-answer-card h4{margin:0;font-size:14px;color:#1d324d}.summary-answer-card .points-badge{background:#245bd8;color:#fff;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:600}.summary-answer-card p{margin:6px 0;font-size:13px;color:#4a5b71}.summary-answer-card .ans-q{font-weight:600;color:#253c5a}.summary-answer-card .ans-t{font-style:italic;background:#f0f4f9;padding:6px 10px;border-radius:4px}
+.live-main{
+  max-width:1440px}
+  .live-layout{
+    display:grid;
+    grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);
+    gap:24px}
+    .main-column,.side-column{
+      display:flex;
+      flex-direction:column;
+      gap:24px}
+      header nav{
+        display:flex;
+        gap:20px;
+        align-items:center}
+        a{
+          color:#245bd8}
+          nav a,.section-title a{
+            font-size:14px}
+            .session-status{
+              padding:12px 16px;
+              border:1px solid #c9d7ec;
+              border-radius:8px;
+              background:#eaf1fc;
+              color:#274d80}
+              .skill-chips{
+                display:flex;
+                gap:8px;
+                flex-wrap:wrap;
+                margin-top:16px}
+                .skill-chips span{
+                  background:#eaf1fc;
+                  border:1px solid #c9d9f3;
+                  color:#24529a;
+                  padding:4px 12px;
+                  border-radius:5px;
+                  text-transform:capitalize;
+                  font-size:14px}
+                  input[type=file]{
+                    border:1px dashed #afbed2!important;
+                    background:#f7f9fc!important;
+                    padding:20px!important}
+                    input[type=file]::file-selector-button{
+                      border:0;
+                      border-radius:4px;
+                      background:#e0e9fa;
+                      padding:8px 12px;
+                      color:#274d80;
+                      margin-right:12px;
+                      cursor:pointer}
+                      details{
+                        margin-top:16px}
+                        summary{
+                          cursor:pointer;
+                          font-size:14px;
+                          color:#41608a}
+                          pre{
+                            white-space:pre-wrap;
+                            overflow-wrap:anywhere;
+                            font:inherit;
+                            font-size:14px;
+                            max-height:200px;
+                            overflow:auto;
+                            background:#f5f7fb;
+                            padding:14px;
+                            border-radius:6px}
+                            .camera{
+                              position:relative;
+                              aspect-ratio:16/9;
+                              background:#111c2d;
+                              border-radius:8px;
+                              overflow:hidden}
+                              video{
+                                width:100%;
+                                height:100%;
+                                object-fit:contain}
+                                #camera-empty{
+                                  position:absolute;
+                                  inset:0;
+                                  display:grid;
+                                  place-items:center;
+                                  color:#a6b5cb}
+                                  #recording-label{
+                                    position:absolute;
+                                    left:14px;
+                                    top:14px;
+                                    background:#245bd8;
+                                    color:white;
+                                    border-radius:4px;
+                                    padding:5px 10px;
+                                    font-size:13px}
+                                    .capture-note,.muted{
+                                      font-size:14px;
+                                      color:#5b697c;
+                                      line-height:1.7}
+                                      .capture-controls{
+                                        margin:18px 0}
+                                        .capture-controls .primary{
+                                          width:auto;
+                                          flex:1;
+                                          display:block}
+                                          .turn-controls{
+                                            display:flex;
+                                            gap:8px;
+                                            flex-wrap:wrap;
+                                            padding-top:20px;
+                                            border-top:1px solid #e3e9f1}
+                                            #timer{
+                                              font:15px monospace;
+                                              padding:10px;
+                                              color:#46617e}
+                                              .turn-controls+small{
+                                                margin-top:12px;
+                                                font-size:13px}
+                                                .transcript-grid{
+                                                  display:grid;
+                                                  grid-template-columns:1fr 1fr;
+                                                  gap:20px}
+                                                  .transcript{
+                                                    font-size:15px;
+                                                    background:#f5f7fb;
+                                                    border-radius:7px;
+                                                    padding:14px;
+                                                    min-height:120px;
+                                                    max-height:260px;
+                                                    overflow:auto;
+                                                    white-space:pre-wrap;
+                                                    overflow-wrap:anywhere;
+                                                    color:#42546b}
+                                                    .metrics{
+                                                      display:grid;
+                                                      gap:14px}
+                                                      .metrics>div{
+                                                        display:flex;
+                                                        align-items:center;
+                                                        justify-content:space-between;
+                                                        gap:20px;
+                                                        border-bottom:1px solid #e7edf4;
+                                                        padding-bottom:12px}
+                                                        .metrics span{
+                                                          font-size:14px;
+                                                          color:#5b697c}
+                                                          .metrics strong{
+                                                            font-size:15px;
+                                                            text-align:right}
+                                                            #observations{
+                                                              padding-left:20px;
+                                                              color:#5b697c;
+                                                              font-size:14px}
+                                                              #observations li{
+                                                                margin:10px 0}
+                                                                .skill-result{
+                                                                  border-top:1px solid #e4eaf3;
+                                                                  padding:16px 0}
+                                                                  .skill-result h3{
+                                                                    display:flex;
+                                                                    flex-wrap:wrap;
+                                                                    justify-content:space-between;
+                                                                    gap:8px;
+                                                                    margin:0;
+                                                                    text-transform:capitalize}
+                                                                    .skill-result p{
+                                                                      font-size:14px;
+                                                                      color:#5b697c;
+                                                                      margin:8px 0 0}
+                                                                      .tag{
+                                                                        font-size:12px;
+                                                                        letter-spacing:.02em;
+                                                                        background:#edf1f6;
+                                                                        color:#5a6d85;
+                                                                        border-radius:4px;
+                                                                        padding:3px 7px;
+                                                                        text-transform:none;
+                                                                        font-weight:600}
+                                                                        .tag.follow-up{
+                                                                          background:#fff0d6;
+                                                                          color:#865806}
+                                                                          .tag.present{
+                                                                            background:#e6f6ed;
+                                                                            color:#206142}
+                                                                            .limitation{
+                                                                              background:#eaf0f9;
+                                                                              border-color:#d0dbee}
+                                                                              .limitation h2{
+                                                                                font-size:17px;
+                                                                                margin:0 0 12px}
+                                                                                .limitation p{
+                                                                                  font-size:14px;
+                                                                                  color:#51647f}
+                                                                                  .history-item{
+                                                                                    border-top:1px solid #dce3ec;
+                                                                                    padding:14px 0}
+                                                                                    .history-item summary{
+                                                                                      color:#17283d}
+                                                                                      .history-item p{
+                                                                                        font-size:14px;
+                                                                                        white-space:pre-wrap;
+                                                                                        overflow-wrap:anywhere}
+                                                                                        #vision-state,#device-state{
+                                                                                          font-size:12px;
+                                                                                          text-align:right}
+                                                                                          button:disabled{
+                                                                                            cursor:not-allowed}
+                                                                                            .section-title{
+                                                                                              gap:16px}
+                                                                                              @media(max-width:1000px){
+                                                                                                .live-layout{
+                                                                                                  grid-template-columns:1fr}
+                                                                                                  .side-column{
+                                                                                                    display:grid;
+                                                                                                    grid-template-columns:1fr 1fr}
+                                                                                                    .limitation{
+                                                                                                      grid-column:1/-1}
+                                                                                                    }
+                                                                                                    @media(max-width:640px){
+                                                                                                      header{
+                                                                                                        height:auto;
+                                                                                                        min-height:78px;
+                                                                                                        flex-wrap:wrap;
+                                                                                                        padding-top:14px;
+                                                                                                        padding-bottom:14px}
+                                                                                                        header nav{
+                                                                                                          gap:12px}
+                                                                                                          .side-column,.transcript-grid{
+                                                                                                            display:flex;
+                                                                                                            flex-direction:column}
+                                                                                                            .section-title{
+                                                                                                              flex-wrap:wrap}
+                                                                                                              .turn-controls button{
+                                                                                                                flex:1 1 40%}
+                                                                                                                .capture-controls .primary{
+                                                                                                                  font-size:14px}
+                                                                                                                  .camera{
+                                                                                                                    aspect-ratio:4/3}
+                                                                                                                  }
+                                                                                                                  .summary-header{
+                                                                                                                    display:flex;
+                                                                                                                    align-items:center;
+                                                                                                                    gap:20px;
+                                                                                                                    background:#f5f8fc;
+                                                                                                                    border:1px solid #d4e0f0;
+                                                                                                                    border-radius:8px;
+                                                                                                                    padding:16px;
+                                                                                                                    margin:16px 0}
+                                                                                                                    .score-card{
+                                                                                                                      text-align:center;
+                                                                                                                      min-width:110px;
+                                                                                                                      background:#245bd8;
+                                                                                                                      color:#fff;
+                                                                                                                      border-radius:8px;
+                                                                                                                      padding:12px 14px}
+                                                                                                                      .score-num{
+                                                                                                                        font-size:32px;
+                                                                                                                        font-weight:700;
+                                                                                                                        line-height:1}
+                                                                                                                        .score-denom{
+                                                                                                                          font-size:16px;
+                                                                                                                          opacity:.85}
+                                                                                                                          .score-title{
+                                                                                                                            font-size:11px;
+                                                                                                                            margin:6px 0 0;
+                                                                                                                            text-transform:uppercase;
+                                                                                                                            letter-spacing:.05em}
+                                                                                                                            .summary-meta h3{
+                                                                                                                              margin:0 0 6px;
+                                                                                                                              font-size:18px;
+                                                                                                                              color:#182b45}
+                                                                                                                              .summary-meta p{
+                                                                                                                                margin:0;
+                                                                                                                                font-size:14px;
+                                                                                                                                color:#51657e}
+                                                                                                                                .summary-body h3{
+                                                                                                                                  margin:18px 0 8px;
+                                                                                                                                  font-size:16px;
+                                                                                                                                  color:#1d3049}
+                                                                                                                                  .summary-grid{
+                                                                                                                                    display:grid;
+                                                                                                                                    grid-template-columns:1fr 1fr;
+                                                                                                                                    gap:18px;
+                                                                                                                                    margin:12px 0}
+                                                                                                                                    .summary-grid h4{
+                                                                                                                                      margin:0 0 8px;
+                                                                                                                                      font-size:14px;
+                                                                                                                                      color:#245bd8}
+                                                                                                                                      .summary-list{
+                                                                                                                                        margin:0;
+                                                                                                                                        padding-left:18px;
+                                                                                                                                        font-size:14px;
+                                                                                                                                        color:#43556d;
+                                                                                                                                        line-height:1.6}
+                                                                                                                                        .summary-list li{
+                                                                                                                                          margin-bottom:6px}
+                                                                                                                                          .summary-skill-cards{
+                                                                                                                                            display:grid;
+                                                                                                                                            grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+                                                                                                                                            gap:12px;
+                                                                                                                                            margin-bottom:18px}
+                                                                                                                                            .summary-skill-card{
+                                                                                                                                              border:1px solid #e0e7f1;
+                                                                                                                                              border-radius:6px;
+                                                                                                                                              padding:12px;
+                                                                                                                                              background:#fafbfd}
+                                                                                                                                              .summary-skill-card h4{
+                                                                                                                                                margin:0 0 6px;
+                                                                                                                                                font-size:15px;
+                                                                                                                                                display:flex;
+                                                                                                                                                justify-content:space-between;
+                                                                                                                                                text-transform:capitalize}
+                                                                                                                                                .summary-skill-card p{
+                                                                                                                                                  margin:0;
+                                                                                                                                                  font-size:13px;
+                                                                                                                                                  color:#5a6d85;
+                                                                                                                                                  line-height:1.4}
+                                                                                                                                                  .summary-answer-cards{
+                                                                                                                                                    display:flex;
+                                                                                                                                                    flex-direction:column;
+                                                                                                                                                    gap:12px}
+                                                                                                                                                    .summary-answer-card{
+                                                                                                                                                      border:1px solid #e0e7f1;
+                                                                                                                                                      border-radius:6px;
+                                                                                                                                                      padding:14px;
+                                                                                                                                                      background:#fafbfd}
+                                                                                                                                                      .summary-answer-card .card-head{
+                                                                                                                                                        display:flex;
+                                                                                                                                                        justify-content:space-between;
+                                                                                                                                                        align-items:center;
+                                                                                                                                                        margin-bottom:8px;
+                                                                                                                                                        flex-wrap:wrap;
+                                                                                                                                                        gap:8px}
+                                                                                                                                                        .summary-answer-card h4{
+                                                                                                                                                          margin:0;
+                                                                                                                                                          font-size:14px;
+                                                                                                                                                          color:#1d324d}
+                                                                                                                                                          .summary-answer-card .points-badge{
+                                                                                                                                                            background:#245bd8;
+                                                                                                                                                            color:#fff;
+                                                                                                                                                            padding:3px 8px;
+                                                                                                                                                            border-radius:4px;
+                                                                                                                                                            font-size:12px;
+                                                                                                                                                            font-weight:600}
+                                                                                                                                                            .summary-answer-card p{
+                                                                                                                                                              margin:6px 0;
+                                                                                                                                                              font-size:13px;
+                                                                                                                                                              color:#4a5b71}
+                                                                                                                                                              .summary-answer-card .ans-q{
+                                                                                                                                                                font-weight:600;
+                                                                                                                                                                color:#253c5a}
+                                                                                                                                                                .summary-answer-card .ans-t{
+                                                                                                                                                                  font-style:italic;
+                                                                                                                                                                  background:#f0f4f9;
+                                                                                                                                                                  padding:6px 10px;
+                                                                                                                                                                  border-radius:4px}
+                                                                                                                                                                  /* Keep long transcripts and controls within their grid cells. */
+                                                                                                                                                                  .main-column,.side-column,.summary-meta{
+                                                                                                                                                                    min-width:0}
+                                                                                                                                                                    .summary-answer-card p,.summary-skill-card p,.summary-list{
+                                                                                                                                                                      overflow-wrap:anywhere}
+                                                                                                                                                                      .summary-skill-card h4{
+                                                                                                                                                                        flex-wrap:wrap;
+                                                                                                                                                                        gap:8px}
+                                                                                                                                                                        .turn-controls .primary{
+                                                                                                                                                                          width:auto;
+                                                                                                                                                                          display:block}
+                                                                                                                                                                          summary:focus-visible{
+                                                                                                                                                                            outline:3px solid #9dbbff;
+                                                                                                                                                                            outline-offset:4px}
+                                                                                                                                                                            @media(max-width:640px){
+                                                                                                                                                                              .summary-grid{
+                                                                                                                                                                                grid-template-columns:1fr}
+                                                                                                                                                                                .summary-header{
+                                                                                                                                                                                  align-items:flex-start;
+                                                                                                                                                                                  flex-direction:column}
+                                                                                                                                                                                  header nav{
+                                                                                                                                                                                    flex-wrap:wrap}
+                                                                                                                                                                                    .turn-controls button{
+                                                                                                                                                                                      min-width:0}
+                                                                                                                                                                                    }
+                                                                                                                                                                                    @media(prefers-reduced-motion:reduce){
+                                                                                                                                                                                      html{
+                                                                                                                                                                                        scroll-behavior:auto}
+                                                                                                                                                                                      }

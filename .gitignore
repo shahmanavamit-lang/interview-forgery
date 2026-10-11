@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 models/
 .DS_Store
+
+.pytest_cache/
+.coverage
+htmlcov/
+playwright-report/
+test-results/
